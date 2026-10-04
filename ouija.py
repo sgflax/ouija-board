@@ -173,10 +173,6 @@ def draw(screen, font, small):
     screen.fill((20, 18, 26))
     for key, (x, y) in LAYOUT.items():
         lit = key == S.lit
-        if lit:
-            glow = pygame.Surface((160, 160), pygame.SRCALPHA)
-            pygame.draw.circle(glow, (255, 190, 80, 90), (80, 80), 70)
-            screen.blit(glow, (x - 80, y - 80))
         color = (255, 210, 110) if lit else (110, 100, 130)
         img = font.render(key, True, color)
         screen.blit(img, img.get_rect(center=(x, y)))
