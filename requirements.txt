@@ -1,0 +1,5 @@
+pygame-ce
+numpy
+sounddevice
+faster-whisper
+anthropic
