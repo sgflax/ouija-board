@@ -21,6 +21,7 @@ import time
 
 import numpy as np
 import pygame
+import difflib
 
 TYPED = "--typed" in sys.argv
 SAMPLE_RATE = 16000
@@ -32,7 +33,31 @@ SYSTEM_PROMPT = (
 )
 CANNED = ["YES", "NO", "MAYBE", "ASK AGAIN", "BEWARE", "GOODBYE"]
 WORDS = ("YES", "NO", "GOODBYE")
+FAQ = {
+    ("10 years from now will i be happy", "ten years from now will i be happy", "will i be happy in 10 years"): "MOSTLY YES",
+    ("will i get a job",): "SOON",
+    ("tell me something about the afterlife",): "NOT EMPTY",
+    ("will my parents see me succeed",): "THEY WILL SEE",
+    ("who are you",): "WE ARE MANY",
+    ("do you enjoy being dead",): "QUIET HERE",
+    ("are you there",): "HERE",
+    ("how did you die",): "I FORGET",
+    ("am i in danger",): "NO",
+    ("what should i invest in in the next 10 years", "what should i invest in in the next ten years"): "PEOPLE",
+    ("am i gonna get married", "am i going to get married", "will i get married"): "YES",
+    ("what do you like to eat",): "SALT",
+    ("what makes you laugh",): "YOU",
+    ("are you happy",): "SOMETIMES",
+    ("how will i die", "when will i die", "how when will i die"): "NOT TODAY",
+    ("whos going to win the superbowl", "who is going to win the super bowl", "who will win the superbowl"): "RED",
+}
+FAQ_LOOKUP = {q: a for qs, a in FAQ.items() for q in qs}
 
+
+def faq_answer(question):
+    q = re.sub(r"[^a-z0-9 ]", "", question.lower()).strip()
+    match = difflib.get_close_matches(q, FAQ_LOOKUP, n=1, cutoff=0.7)
+    return FAQ_LOOKUP[match[0]] if match else None
 
 # board layout (later: the same keys map to plotter X/Y)
 def build_layout():
@@ -74,6 +99,10 @@ def transcribe(audio):
 
 
 def ask_spirit(question):
+    hardcoded = faq_answer(question)
+    if hardcoded:
+        return hardcoded
+
     global client
     if not os.environ.get("ANTHROPIC_API_KEY"):
         return random.choice(CANNED)
