@@ -24,10 +24,11 @@ import pygame
 import difflib
 
 TYPED = "--typed" in sys.argv
+USE_PLOTTER = "--plotter" in sys.argv
 SAMPLE_RATE = 16000
 LLM_MODEL = "claude-haiku-4-5-20251001"
 SYSTEM_PROMPT = (
-    "You are a spirit speaking through an ouija board. Reply in one to four words, "
+    "You are a spirit speaking through a ouija board. Reply in one to four words, "
     "uppercase letters only, no punctuation. You may answer YES, NO or GOODBYE. "
     "Be cryptic, brief and eerie. Never explain yourself."
 )
@@ -38,18 +39,18 @@ FAQ = {
     ("will i get a job",): "SOON",
     ("tell me something about the afterlife",): "NOT EMPTY",
     ("will my parents see me succeed",): "THEY WILL SEE",
-    ("who are you",): "WE ARE MANY",
+    ("who are you", "whos there"): "WE ARE MANY",
     ("do you enjoy being dead",): "QUIET HERE",
-    ("are you there",): "HERE",
+    ("are you there",): "YES",
     ("how did you die",): "I FORGET",
     ("am i in danger",): "NO",
-    ("what should i invest in in the next 10 years", "what should i invest in in the next ten years"): "PEOPLE",
+    ("what should i invest in in the next 10 years", "what should i invest in in the next ten years", "what should i invest in"): "PEOPLE",
     ("am i gonna get married", "am i going to get married", "will i get married"): "YES",
     ("what do you like to eat",): "SALT",
     ("what makes you laugh",): "YOU",
     ("are you happy",): "SOMETIMES",
-    ("how will i die", "when will i die", "how when will i die"): "NOT TODAY",
-    ("whos going to win the superbowl", "who is going to win the super bowl", "who will win the superbowl"): "RED",
+    ("how will i die", "when will i die", "how when will i die",): "NOT TODAY",
+    ("whos going to win the superbowl", "who is going to win the super bowl", "who will win the superbowl",): "RED",
 }
 FAQ_LOOKUP = {q: a for qs, a in FAQ.items() for q in qs}
 
@@ -78,6 +79,29 @@ def build_layout():
 
 LAYOUT = build_layout()
 
+P = None
+MARGIN = 20.0
+FLIP_X = False   # flip if the board comes out front-to-back
+FLIP_Y = False   # flip if it comes out left-to-right
+
+
+def to_mm(key):
+    import plotter
+    sx, sy = LAYOUT[key]
+    fy = (sx - 150) / 800   # 0..1 along the board's long side
+    fx = (sy - 110) / 550   # 0..1 across the board
+    if FLIP_X:
+        fx = 1 - fx
+    if FLIP_Y:
+        fy = 1 - fy
+    return (MARGIN + fx * (plotter.MAX_X - 2 * MARGIN),
+            MARGIN + fy * (plotter.MAX_Y - 2 * MARGIN))
+
+
+def rest():
+    if P:
+        import plotter
+        P.goto(0, 0)
 
 # shared state
 class State:
@@ -121,9 +145,13 @@ def clean(text):
     return re.sub(r"\s+", " ", text).strip() or "NO"
 
 
+# def move_to(key):
+#     """Light up a key. On the real board this becomes: send G-code to the plotter."""
+#     S.lit = key
 def move_to(key):
-    """Light up a key. On the real board this becomes: send G-code to the plotter."""
     S.lit = key
+    if P and key:
+        P.goto(*to_mm(key))
 
 
 def spell(text):
@@ -144,7 +172,10 @@ def spell(text):
 
 
 def worker():
-    global whisper
+    global whisper, P
+    if USE_PLOTTER:
+        from plotter import Plotter
+        P = Plotter()
     if not TYPED:
         from faster_whisper import WhisperModel
         whisper = WhisperModel("base.en", compute_type="int8")
@@ -161,6 +192,7 @@ def worker():
             reply = clean(ask_spirit(question))
             S.status = "the spirit speaks..."
             spell(reply)
+            rest()
         except Exception as e:  # keep the board alive if the network or mic hiccups
             S.heard = f"error: {e}"
         S.status = "type a question in the terminal" if TYPED else "press SPACE and ask"
