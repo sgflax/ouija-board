@@ -223,9 +223,31 @@ def stop_recording():
     if len(audio) > SAMPLE_RATE // 2:  # ignore clips under half a second
         jobs.put(audio)
 
-
+def wrap(text, f, max_w):
+    lines, line = [], ""
+    for word in text.split():
+        trial = (line + " " + word).strip()
+        if f.size(trial)[0] <= max_w:
+            line = trial
+        else:
+            lines.append(line)
+            line = word
+    return lines + [line] if line else lines
 # display
 def draw(screen, font, small):
+    if USE_PLOTTER:
+        screen.fill((0, 0, 0))
+        w, h = screen.get_size()
+        lines = wrap(S.heard, font, w - 200) if S.heard else []
+        y = h // 2 - len(lines) * 30
+        for ln in lines:
+            img = font.render(ln, True, (230, 225, 240))
+            screen.blit(img, img.get_rect(center=(w // 2, y)))
+            y += 60
+        img = small.render(S.status, True, (120, 120, 130))
+        screen.blit(img, img.get_rect(center=(w // 2, h - 80)))
+        pygame.display.flip()
+        return
     screen.fill((20, 18, 26))
     for key, (x, y) in LAYOUT.items():
         lit = key == S.lit
@@ -241,10 +263,16 @@ def draw(screen, font, small):
 
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((1100, 720))
+    info = pygame.display.Info()
+    if USE_PLOTTER:
+        screen = pygame.display.set_mode((int(info.current_w * 0.9), int(info.current_h * 0.85)),
+                                         pygame.RESIZABLE)
+    else:
+        screen = pygame.display.set_mode((1100, 720))
     pygame.display.set_caption("ouija")
-    font = pygame.font.SysFont("georgia", 44)
-    small = pygame.font.SysFont("helvetica", 24)
+    big = USE_PLOTTER
+    font = pygame.font.SysFont("georgia", 72 if big else 44)
+    small = pygame.font.SysFont("helvetica", 32 if big else 24)
     threading.Thread(target=worker, daemon=True).start()
     if TYPED:
         threading.Thread(target=typed_input, daemon=True).start()
