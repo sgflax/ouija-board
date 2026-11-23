@@ -23,6 +23,9 @@ import numpy as np
 import pygame
 import difflib
 
+import json
+BOARD_MM = json.load(open("board_coords.json"))
+
 TYPED = "--typed" in sys.argv
 USE_PLOTTER = "--plotter" in sys.argv
 SAMPLE_RATE = 16000
@@ -33,7 +36,7 @@ SYSTEM_PROMPT = (
     "Be cryptic, brief and eerie. Never explain yourself."
 )
 CANNED = ["YES", "NO", "MAYBE", "ASK AGAIN", "BEWARE", "GOODBYE"]
-WORDS = ("YES", "NO", "GOODBYE")
+WORDS = ("YES", "NO")
 FAQ = {
     ("10 years from now will i be happy", "ten years from now will i be happy", "will i be happy in 10 years"): "MOSTLY YES",
     ("will i get a job",): "SOON",
@@ -86,16 +89,7 @@ FLIP_Y = False   # flip if it comes out left-to-right
 
 
 def to_mm(key):
-    import plotter
-    sx, sy = LAYOUT[key]
-    fy = (sx - 150) / 800   # 0..1 along the board's long side
-    fx = (sy - 110) / 550   # 0..1 across the board
-    if FLIP_X:
-        fx = 1 - fx
-    if FLIP_Y:
-        fy = 1 - fy
-    return (MARGIN + fx * (plotter.MAX_X - 2 * MARGIN),
-            MARGIN + fy * (plotter.MAX_Y - 2 * MARGIN))
+    return tuple(BOARD_MM[key])
 
 
 def rest():
@@ -141,7 +135,7 @@ def ask_spirit(question):
 
 
 def clean(text):
-    text = re.sub(r"[^A-Z0-9 ]", "", text.upper())
+    text = re.sub(r"[^A-Z ]", "", text.upper())
     return re.sub(r"\s+", " ", text).strip() or "NO"
 
 
@@ -150,6 +144,7 @@ def clean(text):
 #     S.lit = key
 def move_to(key):
     S.lit = key
+    if key: print(key, to_mm(key))
     if P and key:
         P.goto(*to_mm(key))
 
